@@ -6,8 +6,8 @@ class ObservationSpaceNames:
 
     TARGET_SOUND_WAVE = "target_sound_wave"
     GENERATED_SOUND_WAVE = "generated_sound_wave"
-    TARGET_SOUND_SPECTROGRAM = "target_sound_spectrogram"
-    GENERATED_SOUND_SPECTROGRAM = "generated_sound_spectrogram"
+    TARGET_SOUND_SPECTROGRAM = "desired_goal"
+    GENERATED_SOUND_SPECTROGRAM = "achieved_goal"
     FREQUENCY = "frequency"
     PITCH_SHIFT = "pitch_shift"
     TENSENESS = "tenseness"

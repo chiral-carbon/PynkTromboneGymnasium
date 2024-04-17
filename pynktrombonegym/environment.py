@@ -3,10 +3,10 @@ import math
 from collections import OrderedDict
 from typing import Any, Dict, List, Literal, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 
-import gym
+import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from pynktrombone import Voc
 
 from . import spectrogram as spct
@@ -233,12 +233,12 @@ class PynkTrombone(gym.Env):
         Return:
             observation (OrdereDict): observation.
         """
-        target_sound_wave = self.target_sound_wave
-        generated_sound_wave = self.generated_sound_wave
-        target_sound_spectrogram = self.get_target_sound_spectrogram()
-        generated_sound_spectrogram = self.get_generated_sound_spectrogram()
+        target_sound_wave = self.target_sound_wave.astype(np.float32)
+        generated_sound_wave = self.generated_sound_wave.astype(np.float32)
+        target_sound_spectrogram = self.get_target_sound_spectrogram().astype(np.float32)
+        generated_sound_spectrogram = self.get_generated_sound_spectrogram().astype(np.float32)
         frequency = np.array([self.voc.frequency], dtype=np.float32)
-        pitch_shift = np.log2(frequency / self.default_frequency)
+        pitch_shift = np.log2(frequency / self.default_frequency, dtype=np.float32)
         tenseness = np.array([self.voc.tenseness], dtype=np.float32)
         tract_diameters = self.voc.current_tract_diameters.astype(np.float32)
         nose_diameters = self.voc.nose_diameters.astype(np.float32)
@@ -260,8 +260,8 @@ class PynkTrombone(gym.Env):
         return obs
 
     def reset(
-        self, *, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None
-    ) -> OrderedDict:
+        self, seed: Optional[int] = None, options: Optional[dict] = None
+    ) -> Tuple[OrderedDict, dict]:
         """Reset this enviroment.
         Choice sound file randomly and load it as waveform.
         Internal vocal tract model `Voc` is reconstructed too.
@@ -269,21 +269,19 @@ class PynkTrombone(gym.Env):
         Returns:
             observation (OrderedDict): Initial observation of this enviroment.
         """
-        super().reset(seed=seed, return_info=return_info, options=options)
+        super().reset(seed=seed, options=options)
 
         self.initialize_state()
         obs = self.get_current_observation()
-        return obs
+        return obs, {}
 
-    def compute_reward(self) -> float:
+    def compute_reward(self, target, generated, info={}) -> float:
         """Compute current reward.
         Measure 'minus' MSE between target and generated.
 
         Returns:
             reward (float):  Computed reward value.
         """
-        target = self.get_target_sound_spectrogram()
-        generated = self.get_generated_sound_spectrogram()
 
         return -mean_squared_error(generated, target)
 
@@ -340,13 +338,18 @@ class PynkTrombone(gym.Env):
 
         generated_wave = self.voc.play_chunk()
         self._generated_sound_wave_2chunks = np.concatenate([self.generated_sound_wave, generated_wave])
-        reward = self.compute_reward()  # Minus error between generated and 'current' target.
+
 
         ##### Next step #####
         self.current_step += 1
         done = self.done
         obs = self.get_current_observation()
-        return obs, reward, done, info
+        target = obs[OSN.TARGET_SOUND_SPECTROGRAM]
+        generated = obs[OSN.GENERATED_SOUND_SPECTROGRAM]
+        reward = self.compute_reward(target, generated, {})  # Minus error between generated and 'current' target.
+
+        truncated = False
+        return obs, reward, done, truncated, info
 
     def render(
         self, mode: Optional[Literal["rgb_arrays", "single_rgb_array"]] = None
@@ -386,7 +389,7 @@ class PynkTrombone(gym.Env):
         return super().close()
 
 
-def mean_squared_error(output: np.ndarray, target: np.ndarray) -> float:
+def mean_squared_error(output: np.ndarray, target: np.ndarray) -> Union[float, np.ndarray]:
     """Compute mse.
     Output and Target must have same shape.
 
@@ -398,5 +401,11 @@ def mean_squared_error(output: np.ndarray, target: np.ndarray) -> float:
         mse (float): Mean Squared Error.
     """
     delta = output - target
-    mse = float(np.sum(delta * delta / target.size))
+    if delta.ndim == 2:
+        delta = np.expand_dims(delta, axis=0)
+    mse = np.mean(delta * delta, axis=(1,2))
+    mse = np.round(mse, 4)
+
+    if mse.shape[0] == 1:
+        mse = float(mse[0])
     return mse
