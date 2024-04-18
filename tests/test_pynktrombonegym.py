@@ -1,4 +1,4 @@
-from pynktrombonegym import __version__
+from pynktrombonegymnasium import __version__
 
 
 def test_version():
