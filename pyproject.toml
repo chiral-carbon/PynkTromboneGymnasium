@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "PynkTromboneGym"
+name = "PynkTromboneGymnasium"
 version = "0.2.0"
 description = ""
 authors = ["Geson-anko <59220704+Geson-anko@users.noreply.github.com>"]

@@ -6,9 +6,8 @@ from typing import Callable
 import gym
 import numpy as np
 import soundfile
-
-from pynktrombonegym.spaces import ObservationSpaceNames as OSN
-from pynktrombonegym.wrappers import ActionByAcceleration, Log1pMelSpectrogram
+from pynktrombonegymnasium.spaces import ObservationSpaceNames as OSN
+from pynktrombonegymnasium.wrappers import ActionByAcceleration, Log1pMelSpectrogram
 
 target_sound_files = glob.glob("data/sample_target_sounds/*.wav")
 sound_seconds = 5.0

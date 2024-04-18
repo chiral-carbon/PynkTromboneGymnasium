@@ -1,4 +1,4 @@
-from pynktrombonegym import spaces as ptspaces
+from pynktrombonegymnasium import spaces as ptspaces
 
 
 def assert_space_names(name_cls: object):

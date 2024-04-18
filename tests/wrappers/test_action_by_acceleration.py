@@ -4,10 +4,9 @@ from collections import OrderedDict
 
 import numpy as np
 from gym import spaces
-
-from pynktrombonegym.environment import PynkTrombone
-from pynktrombonegym.spaces import ActionSpaceNames as ASN
-from pynktrombonegym.wrappers.action_by_acceleration import ActionByAcceleration
+from pynktrombonegymnasium.environment import PynkTrombone
+from pynktrombonegymnasium.spaces import ActionSpaceNames as ASN
+from pynktrombonegymnasium.wrappers.action_by_acceleration import ActionByAcceleration
 
 from ..test_environment import assert_dict_space_key, assert_space, target_sound_files
 from ..test_generation import generate_sound
