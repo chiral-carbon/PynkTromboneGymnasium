@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import lines, text
 from pynktrombone.voc import Voc
-
-from pynktrombonegym import renderer
+from pynktrombonegymnasium import renderer
 
 
 def test__init__():

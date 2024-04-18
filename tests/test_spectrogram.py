@@ -1,6 +1,5 @@
 import numpy as np
-
-from pynktrombonegym import spectrogram as spct
+from pynktrombonegymnasium import spectrogram as spct
 
 from .test_environment import target_sound_files
 

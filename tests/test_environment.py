@@ -5,12 +5,11 @@ from typing import Mapping, OrderedDict
 import matplotlib.pyplot as plt
 import numpy as np
 from gym import spaces
-
-from pynktrombonegym import environment
-from pynktrombonegym import spectrogram as spct
-from pynktrombonegym.renderer import Renderer
-from pynktrombonegym.spaces import ActionSpaceNames as ASN
-from pynktrombonegym.spaces import ObservationSpaceNames as OSN
+from pynktrombonegymnasium import environment
+from pynktrombonegymnasium import spectrogram as spct
+from pynktrombonegymnasium.renderer import Renderer
+from pynktrombonegymnasium.spaces import ActionSpaceNames as ASN
+from pynktrombonegymnasium.spaces import ObservationSpaceNames as OSN
 
 target_sound_files = glob.glob("data/sample_target_sounds/*.wav")
 
