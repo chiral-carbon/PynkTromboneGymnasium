@@ -1,10 +1,20 @@
 import copy
 import math
 from collections import OrderedDict
-from typing import Any, Dict, List, Literal, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import gymnasium as gym
-import matplotlib.pyplot as plt
 import numpy as np
 from gymnasium import spaces
 from pynktrombone import Voc
@@ -55,6 +65,7 @@ class PynkTrombone(gym.Env):
         stft_window_size: int = 1024,
         stft_hop_length: int = None,
         rendering_figure_size: tuple[float, float] = (6.4, 4.8),
+        render_mode:str = "rgb_array",
     ):
         """Contructs environment. Setup `Voc`, deine spaces, and reset environment.
 
@@ -85,6 +96,7 @@ class PynkTrombone(gym.Env):
         self.action_space = self.define_action_space()
         self.observation_space = self.define_observation_space()
         self.reward_range = self.define_reward_range()
+        self.render_mode = render_mode
 
     @property
     def target_sound_wave(self) -> np.ndarray:
