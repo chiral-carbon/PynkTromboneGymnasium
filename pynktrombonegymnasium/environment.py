@@ -311,19 +311,28 @@ class PynkTrombone(gym.Env):
             RuntimeError: If done is True, raises runtime error.
                 Please call `reset` method of this enviroment.
         """
+        mapped_actions = {}
+        if isinstance(action, dict):
+            mapped_actions = action
+        elif isinstance(action, (np.ndarray,list)):
+            for i, key in enumerate(sorted(self.action_space.spaces.keys())):
+                mapped_actions[key] = action[i]
+        else:
+            raise ValueError(f"Unexpected action type: {type(action)}")
+            
         if self.done:
             raise RuntimeError("This environment has been finished. Please call `reset` method.")
 
         info: Dict[Any, Any] = dict()
 
-        pitch_shift: np.ndarray = action[ASN.PITCH_SHIFT]
-        tenseness: np.ndarray = action[ASN.TENSENESS]
-        trachea: np.ndarray = action[ASN.TRACHEA]
-        epiglottis: np.ndarray = action[ASN.EPIGLOTTIS]
-        velum: np.ndarray = action[ASN.VELUM]
-        tongue_index: np.ndarray = action[ASN.TONGUE_INDEX]
-        tongue_diameter: np.ndarray = action[ASN.TONGUE_DIAMETER]
-        lips: np.ndarray = action[ASN.LIPS]
+        pitch_shift: np.ndarray = mapped_actions[ASN.PITCH_SHIFT]
+        tenseness: np.ndarray = mapped_actions[ASN.TENSENESS]
+        trachea: np.ndarray = mapped_actions[ASN.TRACHEA]
+        epiglottis: np.ndarray = mapped_actions[ASN.EPIGLOTTIS]
+        velum: np.ndarray = mapped_actions[ASN.VELUM]
+        tongue_index: np.ndarray = mapped_actions[ASN.TONGUE_INDEX]
+        tongue_diameter: np.ndarray = mapped_actions[ASN.TONGUE_DIAMETER]
+        lips: np.ndarray = mapped_actions[ASN.LIPS]
 
         self.voc.frequency = self.default_frequency * (2 ** pitch_shift.item())
         self.voc.tenseness = tenseness.item()
