@@ -130,11 +130,11 @@ class PynkTrombone(gym.Env):
         self.voc = Voc(self.sample_rate, self.generate_chunk, default_freq=self.default_frequency)
         self._rendered_rgb_arrays: List[np.ndarray] = []
 
-    action_space: spaces.Dict
+    action_space: spaces.Box
 
-    def define_action_space(self) -> spaces.Dict:
+    def define_action_space(self) -> spaces.Box:
         """Defines action space of this environment."""
-        action_space = spaces.Dict(
+        self.dict_action_space = spaces.Dict(
             {
                 ASN.PITCH_SHIFT: spaces.Box(-1.0, 1.0),
                 ASN.TENSENESS: spaces.Box(0.0, 1.0),
@@ -146,7 +146,58 @@ class PynkTrombone(gym.Env):
                 ASN.LIPS: spaces.Box(0, 1.5),
             }
         )
-        return action_space
+        
+        # return self.dict_action_space
+        
+        # lower_bounds = np.array([
+        #     -1.0,  # PITCH_SHIFT
+        #     0.0,   # TENSENESS
+        #     0.0,   # TRACHEA
+        #     0.0,   # EPIGLOTTIS
+        #     0.0,   # VELUM
+        #     12.0,  # TONGUE_INDEX
+        #     0.0,   # TONGUE_DIAMETER
+        #     0.0,   # LIPS
+        # ])
+
+        # # Define the upper bounds for each action space
+        # upper_bounds = np.array([
+        #     1.0,  # PITCH_SHIFT
+        #     1.0,  # TENSENESS
+        #     3.5,  # TRACHEA
+        #     3.5,  # EPIGLOTTIS
+        #     3.5,  # VELUM
+        #     40.0, # TONGUE_INDEX
+        #     3.5,  # TONGUE_DIAMETER
+        #     1.5,  # LIPS
+        # ])
+        
+        lower_bounds = np.array([
+            -1.0,  # PITCH_SHIFT
+            -1.0,  # TENSENESS
+            -1.0,  # TRACHEA
+            -1.0,  # EPIGLOTTIS
+            -1.0,  # VELUM
+            -1.0,  # TONGUE_INDEX
+            -1.0,  # TONGUE_DIAMETER
+            -1.0,  # LIPS
+        ])
+
+        # Define the upper bounds for each action space
+        upper_bounds = np.array([
+            1.0,  # PITCH_SHIFT
+            1.0,  # TENSENESS
+            1.0,  # TRACHEA
+            1.0,  # EPIGLOTTIS
+            1.0,  # VELUM
+            1.0,  # TONGUE_INDEX
+            1.0,  # TONGUE_DIAMETER
+            1.0,  # LIPS
+        ])
+
+        # Create the combined Box space
+        combined_action_space = spaces.Box(low=lower_bounds, high=upper_bounds, dtype=np.float32)
+        return combined_action_space
 
     observation_space: spaces.Dict
 
@@ -327,11 +378,11 @@ class PynkTrombone(gym.Env):
         if isinstance(action, dict):
             mapped_actions = action
         elif isinstance(action, (np.ndarray,list)):
-            for i, key in enumerate(sorted(self.action_space.spaces.keys())):
+            for i, key in enumerate(sorted(self.dict_action_space.spaces.keys())):
                 mapped_actions[key] = action[i]
         else:
             raise ValueError(f"Unexpected action type: {type(action)}")
-            
+        
         if self.done:
             raise RuntimeError("This environment has been finished. Please call `reset` method.")
 
