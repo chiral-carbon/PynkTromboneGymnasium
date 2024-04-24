@@ -383,6 +383,18 @@ class PynkTrombone(gym.Env):
         else:
             raise ValueError(f"Unexpected action type: {type(action)}")
         
+        # De-Normalize action values to the environment's range
+        mapped_actions = {
+            ASN.PITCH_SHIFT: mapped_actions[ASN.PITCH_SHIFT],
+            ASN.TENSENESS: (mapped_actions[ASN.TENSENESS] + 1) * 0.5,
+            ASN.TRACHEA: (mapped_actions[ASN.TRACHEA] + 1) * 1.75,
+            ASN.EPIGLOTTIS: (mapped_actions[ASN.EPIGLOTTIS] + 1) * 1.75,
+            ASN.VELUM: (mapped_actions[ASN.VELUM] + 1)* 1.75,
+            ASN.TONGUE_INDEX: (mapped_actions[ASN.TONGUE_INDEX]+1)*28+12,
+            ASN.TONGUE_DIAMETER: (mapped_actions[ASN.TONGUE_DIAMETER]+1)*1.75,
+            ASN.LIPS: (mapped_actions[ASN.LIPS]+1)*0.75
+        }
+
         if self.done:
             raise RuntimeError("This environment has been finished. Please call `reset` method.")
 
