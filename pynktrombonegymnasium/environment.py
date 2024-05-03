@@ -16,6 +16,8 @@ from typing import (
 
 import gymnasium as gym
 import numpy as np
+import torch
+import whisper
 from gymnasium import spaces
 from pynktrombone import Voc
 
@@ -24,13 +26,10 @@ from .renderer import Renderer
 from .spaces import ActionSpaceNames as ASN
 from .spaces import ObservationSpaceNames as OSN
 
-import whisper
-import sys
-
 RenderFrame = TypeVar("RenderFrame", np.ndarray, Any)
 
 whisper_model = whisper.load_model("tiny") 
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class PynkTrombone(gym.Env):
     r"""The vocal tract environment for speech generation.
 
@@ -299,11 +298,11 @@ class PynkTrombone(gym.Env):
         wave = whisper.pad_or_trim(wave).astype(np.float32)
 
         mel_spectrogram = whisper.log_mel_spectrogram(wave)
-        mel_spectrogram = mel_spectrogram.float()
+        mel_spectrogram = mel_spectrogram.float().to(device)
 
-        embeddings = whisper_model.encoder(mel_spectrogram.unsqueeze(0)).detach().numpy()
+        embeddings = whisper_model.encoder(mel_spectrogram.unsqueeze(0))
 
-        return embeddings.squeeze(0)
+        return embeddings.squeeze(0).cpu().detach().numpy()
         
 
     def get_generated_sound_spectrogram(self) -> np.ndarray:
@@ -343,10 +342,10 @@ class PynkTrombone(gym.Env):
         """
         wave = self._generated_sound_wave_2chunks[:self.generate_chunk]
         wave = whisper.pad_or_trim(wave).astype(np.float32)
-        mel_spectrogram = whisper.log_mel_spectrogram(wave).float()
-        embeddings = whisper_model.encoder(mel_spectrogram.unsqueeze(0)).detach().numpy()
+        mel_spectrogram = whisper.log_mel_spectrogram(wave).float().to(device)
+        embeddings = whisper_model.encoder(mel_spectrogram.unsqueeze(0))
 
-        return embeddings.squeeze(0)
+        return embeddings.squeeze(0).cpu().detach().numpy()
 
 
     def get_current_observation(self) -> OrderedDict:
