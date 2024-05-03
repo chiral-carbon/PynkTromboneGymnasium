@@ -24,8 +24,12 @@ from .renderer import Renderer
 from .spaces import ActionSpaceNames as ASN
 from .spaces import ObservationSpaceNames as OSN
 
+import whisper
+import sys
+
 RenderFrame = TypeVar("RenderFrame", np.ndarray, Any)
 
+whisper_model = whisper.load_model("tiny") 
 
 class PynkTrombone(gym.Env):
     r"""The vocal tract environment for speech generation.
@@ -208,13 +212,14 @@ class PynkTrombone(gym.Env):
             spct.calc_rfft_channel_num(self.stft_window_size),
             spct.calc_target_sound_spectrogram_length(self.generate_chunk, self.stft_window_size, self.stft_hop_length),
         )
+        spct_shape = (1500, whisper_model.dims.n_audio_state)
 
         observation_space = spaces.Dict(
             {
                 OSN.TARGET_SOUND_WAVE: spaces.Box(-1.0, 1.0, (self.generate_chunk,)),
                 OSN.GENERATED_SOUND_WAVE: spaces.Box(-1.0, 1.0, (self.generate_chunk,)),
-                OSN.TARGET_SOUND_SPECTROGRAM: spaces.Box(0, float("inf"), spct_shape),
-                OSN.GENERATED_SOUND_SPECTROGRAM: spaces.Box(0, float("inf"), spct_shape),
+                OSN.TARGET_SOUND_SPECTROGRAM: spaces.Box(float("-inf"), float("inf"), spct_shape),
+                OSN.GENERATED_SOUND_SPECTROGRAM: spaces.Box(float("-inf"), float("inf"), spct_shape),
                 OSN.FREQUENCY: spaces.Box(0, self.sample_rate // 2),
                 OSN.PITCH_SHIFT: spaces.Box(-1.0, 1.0),
                 OSN.TENSENESS: spaces.Box(0.0, 1.0),
@@ -270,6 +275,37 @@ class PynkTrombone(gym.Env):
         spect = np.abs(spect).T.astype(np.float32)
         return spect
 
+    def get_target_sound_spectrogram_embed(self) -> np.ndarray:
+        """
+        Slice target sound full wave and convert it to mel spectrogram and get embeddings.
+
+        Returns:
+            mel_spectrogram (np.ndarray): Sliced target sound wave mel spectrogram.
+                Shape -> (T, C)
+                Dtype -> float32
+            embeddings (np.ndarray): Embeddings of the sliced target sound wave.
+                Shape -> (T, D)
+                Dtype -> float32
+        """
+        if self.current_step == 0:
+            wave = self._generated_sound_wave_2chunks[:self.generate_chunk]
+            wave = spct.pad_tail(wave, self.generate_chunk)
+
+        else:
+            start = (self.current_step - 1) * self.generate_chunk
+            end = (self.current_step + 1) * self.generate_chunk
+            wave = self._generated_sound_wave_2chunks[start:end]
+            wave = spct.pad_tail(wave, 2 * self.generate_chunk)
+        wave = whisper.pad_or_trim(wave).astype(np.float32)
+
+        mel_spectrogram = whisper.log_mel_spectrogram(wave)
+        mel_spectrogram = mel_spectrogram.float()
+
+        embeddings = whisper_model.encoder(mel_spectrogram.unsqueeze(0)).detach().numpy()
+
+        return embeddings.squeeze(0)
+        
+
     def get_generated_sound_spectrogram(self) -> np.ndarray:
         """Convert generated sound wave to spectrogram
 
@@ -290,6 +326,29 @@ class PynkTrombone(gym.Env):
         spect = np.abs(spect[-length:]).T.astype(np.float32)
         return spect
 
+
+    def get_generated_sound_spectrogram_embed(self) -> np.ndarray:
+        """
+        Convert generated sound wave to mel spectrogram and get embeddings.
+        There is `_generated_sound_wave_2chunks` as a private variable,
+        it contains previous and current generated wave for computing stft naturally.
+
+        Returns:
+            mel_spectrogram (np.ndarray): A mel spectrogram of the generated sound wave.
+                Shape -> (T, C)
+                Dtype -> float32
+            embeddings (np.ndarray): Embeddings of the generated sound wave.
+                Shape -> (T, D)
+                Dtype -> float32
+        """
+        wave = self._generated_sound_wave_2chunks[:self.generate_chunk]
+        wave = whisper.pad_or_trim(wave).astype(np.float32)
+        mel_spectrogram = whisper.log_mel_spectrogram(wave).float()
+        embeddings = whisper_model.encoder(mel_spectrogram.unsqueeze(0)).detach().numpy()
+
+        return embeddings.squeeze(0)
+
+
     def get_current_observation(self) -> OrderedDict:
         """Return current observation.
 
@@ -298,8 +357,10 @@ class PynkTrombone(gym.Env):
         """
         target_sound_wave = self.target_sound_wave.astype(np.float32)
         generated_sound_wave = self.generated_sound_wave.astype(np.float32)
-        target_sound_spectrogram = self.get_target_sound_spectrogram().astype(np.float32)
-        generated_sound_spectrogram = self.get_generated_sound_spectrogram().astype(np.float32)
+        # target_sound_spectrogram_old = self.get_target_sound_spectrogram().astype(np.float32)
+        # generated_sound_spectrogram_old = self.get_generated_sound_spectrogram().astype(np.float32)
+        target_sound_spectrogram = self.get_target_sound_spectrogram_embed().astype(np.float32)
+        generated_sound_spectrogram = self.get_generated_sound_spectrogram_embed().astype(np.float32)
         frequency = np.array([self.voc.frequency], dtype=np.float32)
         pitch_shift = np.log2(frequency / self.default_frequency, dtype=np.float32)
         tenseness = np.array([self.voc.tenseness], dtype=np.float32)
@@ -346,7 +407,8 @@ class PynkTrombone(gym.Env):
             reward (float):  Computed reward value.
         """
 
-        return -mean_squared_error(generated, target)
+        # return -mean_squared_error(generated, target)
+        return -cosine_similarity(generated, target)
 
     @property
     def done(self) -> bool:
@@ -493,3 +555,26 @@ def mean_squared_error(output: np.ndarray, target: np.ndarray) -> Union[float, n
     if mse.shape[0] == 1:
         mse = float(mse[0])
     return mse
+
+
+def cosine_similarity(a, b):
+    """
+    Compute the cosine similarity between two embeddings.
+
+    Args:
+        a (np.ndarray): Embeddings for the first input.
+        b (np.ndarray): Embeddings for the second input.
+
+    Returns:
+        float: Cosine similarity between the two embeddings.
+    """
+    if a.ndim == 2:
+        a = np.expand_dims(a, axis=0)
+        b = np.expand_dims(b, axis=0)
+    unit_a = a / np.linalg.norm(a, axis=-1, keepdims=True)
+    unit_b = b / np.linalg.norm(b, axis=-1, keepdims=True)
+    result = np.einsum('ijk,ijk->ij', unit_a, unit_b)
+    result = result.mean(axis=-1)
+    if result.shape[0] == 1:
+        return float(result[0])
+    return result
